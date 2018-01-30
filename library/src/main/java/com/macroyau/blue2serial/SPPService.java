@@ -10,6 +10,7 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.UUID;
 
 /**
@@ -199,15 +200,26 @@ public class SPPService {
         }
 
         public void run() {
-            byte[] data = new byte[1024];
-            int length;
+            byte[] buffer;
+            ArrayList<Integer> arr_byte = new ArrayList<>();
 
+            // Keep listening to the InputStream while connected
             while (true) {
                 try {
-                    length = mInputStream.read(data);
-                    byte[] read = new byte[length];
-                    System.arraycopy(data, 0, read, 0, length);
-                    mHandler.obtainMessage(BluetoothSerial.MESSAGE_READ, length, -1, read).sendToTarget();
+                    int data = mInputStream.read();
+                    if(data == 0x0A) {
+                    } else if(data == 0x0D) {
+                        buffer = new byte[arr_byte.size()];
+                        for(int i = 0 ; i < arr_byte.size() ; i++) {
+                            buffer[i] = arr_byte.get(i).byteValue();
+                        }
+                        // Send the obtained bytes to the UI Activity
+                        mHandler.obtainMessage(BluetoothSerial.MESSAGE_READ
+                                , buffer.length, -1, buffer).sendToTarget();
+                        arr_byte = new ArrayList<>();
+                    } else {
+                        arr_byte.add(data);
+                    }
                 } catch (IOException e) {
                     reconnect(); // Connection lost
                     SPPService.this.start();
@@ -215,6 +227,7 @@ public class SPPService {
                 }
             }
         }
+
 
         public void write(byte[] data) {
             try {
